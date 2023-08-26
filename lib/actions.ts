@@ -13,11 +13,14 @@ const client = new GraphQLClient(apiUrl);
 export const fetchToken = async () => {
   try {
     const response = await fetch(`${serverUrl}/api/auth/token`);
+    const responseText = await response.text(); // Get the response as text
+    console.log('Response Text:', responseText); // Debug output
     return response.json();
   } catch (err) {
     throw err;
   }
 };
+
 
 export const uploadImage = async (imagePath: string) => {
   try {
@@ -41,11 +44,43 @@ const makeGraphQLRequest = async (query: string, variables = {}) => {
   }
 };
 
-export const fetchAllProjects = (category?: string | null, endcursor?: string | null) => {
+import { ProjectInterface } from "@/common.types"; // Assuming you have this interface defined
+
+const dummyProject: ProjectInterface = {
+  title: 'Dummy Project',
+  description: 'This is a dummy project.',
+  image: '',
+  liveSiteUrl: '',
+  githubUrl: '',
+  category: '',
+  id: 'dummy-id',
+  createdBy: {
+    name: '',
+    email: '',
+    avatarUrl: '',
+    id: '',
+  },
+};
+
+export const fetchAllProjects = (category?: string | null, endcursor?: string | null): Promise<ProjectInterface[]> => {
   client.setHeader("x-api-key", apiKey);
 
-  return makeGraphQLRequest(projectsQuery, { category, endcursor });
+  return makeGraphQLRequest(projectsQuery, { category, endcursor })
+    .then((data: { projects: ProjectInterface[] }) => {
+      // Assuming the data.projects field contains an array of projects
+      if (data.projects && Array.isArray(data.projects)) {
+        // Prepend the dummy project to the list of projects
+        return [dummyProject, ...data.projects];
+      }
+      // Fallback to just returning the dummy project if data is not as expected
+      return [dummyProject];
+    })
+    .catch((error) => {
+      console.error("Error fetching projects:", error);
+      return [dummyProject]; // Return the dummy project in case of an error
+    });
 };
+
 
 export const createNewProject = async (form: ProjectForm, creatorId: string, token: string) => {
   const imageUrl = await uploadImage(form.image);
